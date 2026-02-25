@@ -1,8 +1,11 @@
-require('dotenv').config();
+import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
+import mongoose from "mongoose";
+import router from "./routes/Auth.routes.js";
 
-const express = require('express');
-const mongoose = require('mongoose');
 const app = express();
+app.use(express.json());
 
 const connectDB = async() => {
     try {
@@ -16,9 +19,7 @@ const connectDB = async() => {
 
 connectDB();
 
-app.get("/", (req, res) => {
-    res.send("This is home page");
-});
+app.use("/api/", router);
 
 const PORT = process.env.PORT;
 
