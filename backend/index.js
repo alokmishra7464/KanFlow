@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
-import router from "./routes/Auth.routes.js";
+import authRoutes from "./routes/Auth.routes.js";
+import boardRoutes from "./routes/Board.routes.js";
 
 const app = express();
 app.use(express.json());
@@ -19,7 +20,8 @@ const connectDB = async() => {
 
 connectDB();
 
-app.use("/api/", router);
+app.use("/api/auth", authRoutes);
+app.use("/api/boards", boardRoutes);
 
 const PORT = process.env.PORT;
 
