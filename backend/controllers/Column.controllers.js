@@ -41,7 +41,31 @@ export const createCol = async(req, res) => {
     }
 };
 
-// 2. delete a column
+// 2. get all columns by board
+export const getAllCols = async(req, res) => {
+    try {
+        const { boardId } = req.params;
+        const board = await Board.findById(boardId);
+        if(!board) {
+            return res.status(404).json({ message: "Board not found"});
+        }
+        const isMember = board.members.some(
+            (member) => member.toString() === req.user._id.toString()
+        );
+        if(!isMember) {
+            return res.status(403).json({ message: "Not Authorized"});
+        }
+        // fetch columns in sorted order
+        const columns = await Column.find({ board: boardId}).sort({ order: -1});
+
+        res.status(200).json(columns);
+    }
+    catch(error) {
+        res.status(500).json({ message: error.message});
+    }
+};
+
+// 3. delete a column
 export const deleteCol = async(req, res) => {
     try {
         const { columnId } = req.params;
