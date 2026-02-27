@@ -1,5 +1,6 @@
 import { Column } from "../models/Column.models.js";
 import { Board } from "../models/Board.models.js";
+import { Task } from "../models/Task.models.js";
 
 // 1. create a column
 export const createCol = async(req, res) => {
@@ -34,6 +35,41 @@ export const createCol = async(req, res) => {
             order: columnCount,
         });
 
+    }
+    catch(error) {
+        res.status(500).json({ message: error.message});
+    }
+};
+
+// 2. delete a column
+export const deleteCol = async(req, res) => {
+    try {
+        const { columnId } = req.params;
+
+        const column = await Column.findById(columnId);
+        if(!column) {
+            return res.status(404).json({ message: "Column doesn't exists"});
+        }
+        // if board exists or not
+        const board = await Column.findById(column.board);
+        if(!board) {
+            return res.status(404).json({ message: "Board not found"});
+        }
+        // if user is a member or not
+        const isMember = board.member.some(
+            (member) => member.toString() === req.user._id.toString()
+        );
+        if(!isMember) {
+            return res.status(403).json({ message: "Not Authorized"})
+        }
+        // check if column contains tasks or not
+        const taskCount = await Task.countDocuments( {column: columnId} );
+        if(taskCount > 0) {
+            return res.status(400).json({ message: "Columns with existing tasks cannot be deleted"});
+        }
+
+        await column.deleteOne();
+        res.status(200).json({ message: "Column deleted successfully"});
     }
     catch(error) {
         res.status(500).json({ message: error.message});
