@@ -4,6 +4,7 @@ import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/Auth.routes.js";
 import boardRoutes from "./routes/Board.routes.js";
+import columnRoutes from "./routes/Column.routes.js";
 
 const app = express();
 app.use(express.json());
@@ -22,6 +23,7 @@ connectDB();
 
 app.use("/api/auth", authRoutes);
 app.use("/api/boards", boardRoutes);
+app.use("/api/column", columnRoutes);
 
 const PORT = process.env.PORT;
 

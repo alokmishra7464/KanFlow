@@ -47,7 +47,7 @@ export const getBoardById = async(req, res) => {
             .populate("createdBy", "name email");
         
         if(!board) {
-            return res.status(404).josn({ message: "Board not found!"});
+            return res.status(404).json({ message: "Board not found!"});
         }
 
         const isMember = board.members.some(

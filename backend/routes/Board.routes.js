@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/", protect, createBoard);
 router.get("/", protect, getBoards);
-router.get("/:id/", protect, getBoardById);
+router.get("/:id", protect, getBoardById);
 router.post("/:id/members", protect, addMember);
 router.delete("/:id", protect, deleteBoard);
 

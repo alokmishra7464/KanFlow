@@ -5,7 +5,7 @@ import { Task } from "../models/Task.models.js";
 // 1. create a column
 export const createCol = async(req, res) => {
     try {
-        const name = req.body;
+        const { name } = req.body;
         const { boardId } = req.params;
 
         if(!name) {
@@ -34,6 +34,7 @@ export const createCol = async(req, res) => {
             board: boardId,
             order: columnCount,
         });
+        res.status(201).json(column);
 
     }
     catch(error) {
@@ -75,12 +76,12 @@ export const deleteCol = async(req, res) => {
             return res.status(404).json({ message: "Column doesn't exists"});
         }
         // if board exists or not
-        const board = await Column.findById(column.board);
+        const board = await Board.findById(column.board);
         if(!board) {
             return res.status(404).json({ message: "Board not found"});
         }
         // if user is a member or not
-        const isMember = board.member.some(
+        const isMember = board.members.some(
             (member) => member.toString() === req.user._id.toString()
         );
         if(!isMember) {
