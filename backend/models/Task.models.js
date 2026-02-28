@@ -9,6 +9,6 @@ const taskSchema = new mongoose.Schema({
     order: {type: Number, default: 0}
 }, {timestamps: true});
 
-taskSchema.index({ board: 1, colum: 1, order: 1});
+taskSchema.index({ board: 1, column: 1, order: 1});
 
 export const Task = mongoose.model("Task", taskSchema);
