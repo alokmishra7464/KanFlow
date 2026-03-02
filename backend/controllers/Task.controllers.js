@@ -83,3 +83,31 @@ export const deleteTask = async(req, res) => {
         res.status(500).json({ message: error.message});
     }
 };
+
+// get tasks by columns
+export const getTasksByCols = async(req, res) => {
+    try {
+        const { columnId } = req.params;
+        const column = await Column.findById(columnId);
+        if(!column) {
+            return res.status(404).json({ message: "Column not found"});
+        }
+        const board = await Board.findById(column.board);
+        if(!board) {
+            return res.status(404).json({ message: "Board not found"});
+        }
+        const isMember = board.members.some(
+            (member) => req.user._id.toString() === member.toString()
+        );
+        if(!isMember) {
+            return res.status(403).json({ message: "Not authorized"})
+        }
+
+        const tasks = await Task.findById({ column: columnId}).sort({ order: 1});
+
+        res.status(200).json(tasks);
+    }
+    catch(error) {
+        res.stauts(500).json({ message: error.message});
+    }
+};
