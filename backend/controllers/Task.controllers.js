@@ -111,3 +111,83 @@ export const getTasksByCols = async(req, res) => {
         res.stauts(500).json({ message: error.message});
     }
 };
+
+export const moveTask = async(req, res) => {
+    try {
+        const { taskId, destColId, newIndex } = req.params;
+        const task = await Task.findById(taskId);
+
+        if(!task) {
+            return res.status(404).json({ message: "Task not found"});
+        }
+        const board = await Task.findById(task.board);
+        if(!board) {
+            return res.status(404).json( { message: "Board not found"});
+        }
+        const destCol = await Column.findById(destColId);
+        if(!destCol) {
+            return res.status(404).json( { message: "Destination column not found"});
+        }
+        const isMember = board.members.some(
+            member => member.toString() === req.user._id.toString()
+        );
+        if(!isMember) {
+            return res.status(403).json( {message: "Not authorized"});
+        }
+
+        const srcColId = task.column;
+        const srcIndex = task.order;
+
+        if(srcColId.equals(destColId)) { // moving in same column
+            if(newIndex > srcIndex) {
+                await Task.updateMany(
+                    { // in this col find tasks greater than srcidx and less than equal to newidx
+                      // and decrement them 
+                        column: srcColId,
+                        order: { $gt: srcIndex, $lte: newIndex}
+                    },
+                    { $inc: { order: -1 }} // --> this is decrementing
+                );
+            }
+            else {
+                await Task.updateMany(
+                    {
+                        column: srcColId,
+                        order: { $gte: newIndex, $lt: srcIndex}
+                    },
+                    { $inc: {order: 1}} // --> this is incrementing
+                );
+            }
+            task.order = newIndex;
+            await task.save();
+        }
+        else { // moving to differnt column
+            await Task.updateMany( // filling space in src column
+                {
+                    column: srcColId,
+                    order: { $gt: srcIndex }
+                },
+                { $inc: { order: -1}}
+            );
+
+            await Task.updateMany( // creating space in dest column
+                {
+                    column: destColId,
+                    order: { $gte: newIndex }
+                },
+                { $inc: {order: 1}}
+            );
+
+            task.column = destColId; // updating task column and idx
+            task.order = newIndex;
+
+            await task.save(); // save it 
+        }
+
+        return res.json( {message: "Task moved successfully"});
+
+    }
+    catch(error) {
+        res.status(500).json({ message : error.message});
+    }
+};
