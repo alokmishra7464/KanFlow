@@ -103,12 +103,12 @@ export const getTasksByCols = async(req, res) => {
             return res.status(403).json({ message: "Not authorized"})
         }
 
-        const tasks = await Task.findById({ column: columnId}).sort({ order: 1});
+        const tasks = await Task.find({ column: columnId}).sort({ order: 1});
 
         res.status(200).json(tasks);
     }
     catch(error) {
-        res.stauts(500).json({ message: error.message});
+        res.status(500).json({ message: error.message});
     }
 };
 

@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import cors from "cors"
 dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
@@ -8,6 +9,12 @@ import columnRoutes from "./routes/Column.routes.js";
 import taskRoutes from "./routes/Task.routes.js";
 
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
+
 app.use(express.json());
 
 const connectDB = async() => {

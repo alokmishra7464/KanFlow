@@ -1,32 +1,45 @@
-import React from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import api from '../services/api';
+import Column from '../components/Column';
+import TaskCard from '../components/TaskCard';
 
 function BoardPage() {
-    const [columns, setColumns] = useState([
-        {_id: "1", name: "Todo"},
-        {_id: "2", name: "Doing"},
-        {_id: "3", name: "Done"}
-    ]);
+    const [columns, setColumns] = useState([]);
+    const [taskMap, setTaskMap] = useState({});
 
-    const [taskMap, setTaskMap] = useState({
-        "1": [{ _id: "t1", title: "Task A"}],
-        "2": [{ _id: "t2", title: "Task B"}],
-        "3": []
-    });
+    const boardId = "69a1505a245f0d6ee3110abc";
 
-  return (
-    <div style={{ display: "flex", gap: "20px" }}>
-        {columns.map((col) => (
-            <div key={col._id} style={{ padding: "10px", border: "1px solid black" }}>
-                <h2>{col.name}</h2>
+    const fetchColumns = async () => {
+        try {
+            const res = await api.get(`/column/${boardId}`);
+            setColumns(res.data);
+            const tasksData = {};
+            for (let col of res.data) {
+                const taskRes = await api.get(`/tasks/${col._id}`);
+                tasksData[col._id] = taskRes.data;
+            }
 
-                {taskMap[col._id]?.map((task) => (
-                    <div key={task._id}>{task.title}</div>
-                ))}
-            </div>
-        ))}
-    </div>
-  )
+            setTaskMap(tasksData);
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    useEffect(() => {
+        fetchColumns();
+    }, []);
+
+    return (
+        <div style={{ display: "flex", gap: "20px" }}>
+            {columns.map((col) => (
+                <Column
+                    key={col._id}
+                    column={col}
+                    tasks={taskMap[col._id]}
+                />
+            ))}
+        </div>
+    );
 }
 
-export default BoardPage
+export default BoardPage;
