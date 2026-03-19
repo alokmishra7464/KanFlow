@@ -1,45 +1,222 @@
-import { useState, useEffect } from 'react';
-import api from '../services/api';
-import Column from '../components/Column';
-import TaskCard from '../components/TaskCard';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import KanbanColumn from "../components/KanbanColumn";
+import * as api from "../api";
+import "./BoardPage.css";
 
-function BoardPage() {
-    const [columns, setColumns] = useState([]);
-    const [taskMap, setTaskMap] = useState({});
+export default function BoardPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
-    const boardId = "69a1505a245f0d6ee3110abc";
+  const [board, setBoard] = useState(null);
+  const [columns, setColumns] = useState([]);
+  const [taskMap, setTaskMap] = useState({}); // { colId: [tasks] }
+  const [newColName, setNewColName] = useState("");
+  const [showColForm, setShowColForm] = useState(false);
+  const [memberEmail, setMemberEmail] = useState("");
+  const [showMemberForm, setShowMemberForm] = useState(false);
+  const [memberError, setMemberError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-    const fetchColumns = async () => {
-        try {
-            const res = await api.get(`/column/${boardId}`);
-            setColumns(res.data);
-            const tasksData = {};
-            for (let col of res.data) {
-                const taskRes = await api.get(`/tasks/${col._id}`);
-                tasksData[col._id] = taskRes.data;
-            }
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [b, cols] = await Promise.all([
+          api.getBoardById(id),
+          api.getColumns(id),
+        ]);
+        setBoard(b);
+        setColumns(cols);
 
-            setTaskMap(tasksData);
-        } catch (err) {
-            console.log(err);
-        }
+        const tasks = await Promise.all(
+          cols.map((c) => api.getTasksByColumn(c._id))
+        );
+        const map = {};
+        cols.forEach((c, i) => (map[c._id] = tasks[i]));
+        setTaskMap(map);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
+    load();
+  }, [id]);
 
-    useEffect(() => {
-        fetchColumns();
-    }, []);
+  const addColumn = async (e) => {
+    e.preventDefault();
+    if (!newColName.trim()) return;
+    try {
+      const col = await api.createColumn(id, newColName.trim());
+      setColumns([...columns, col]);
+      setTaskMap({ ...taskMap, [col._id]: [] });
+      setNewColName("");
+      setShowColForm(false);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
+  const deleteColumn = async (colId) => {
+    if (!confirm("Delete this column? (Only works if empty)")) return;
+    try {
+      await api.deleteColumn(colId);
+      setColumns(columns.filter((c) => c._id !== colId));
+      const m = { ...taskMap };
+      delete m[colId];
+      setTaskMap(m);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleTasksChange = (colId, newTasks) => {
+    setTaskMap((prev) => ({ ...prev, [colId]: newTasks }));
+  };
+
+  const handleTaskMove = async (taskId, srcColId, destColId, newIndex) => {
+    try {
+      await api.moveTask(taskId, destColId, newIndex);
+      // Optimistically update UI
+      const srcTasks = [...(taskMap[srcColId] || [])];
+      const destTasks = [...(taskMap[destColId] || [])];
+      const movedTask = srcTasks.find((t) => t._id === taskId);
+      if (!movedTask) return;
+
+      const newSrc = srcTasks.filter((t) => t._id !== taskId);
+      const newDest = srcColId === destColId ? newSrc : destTasks;
+      newDest.splice(newIndex, 0, { ...movedTask, column: destColId });
+
+      if (srcColId === destColId) {
+        setTaskMap((prev) => ({ ...prev, [srcColId]: newDest }));
+      } else {
+        setTaskMap((prev) => ({
+          ...prev,
+          [srcColId]: newSrc,
+          [destColId]: newDest,
+        }));
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const addMember = async (e) => {
+    e.preventDefault();
+    setMemberError("");
+    try {
+      const updated = await api.addMember(id, memberEmail.trim());
+      setBoard(updated);
+      setMemberEmail("");
+      setShowMemberForm(false);
+    } catch (err) {
+      setMemberError(err.message);
+    }
+  };
+
+  if (loading) {
     return (
-        <div style={{ display: "flex", gap: "20px" }}>
-            {columns.map((col) => (
-                <Column
-                    key={col._id}
-                    column={col}
-                    tasks={taskMap[col._id]}
-                />
-            ))}
-        </div>
+      <div className="board-loading">
+        <span className="loading-dot" />
+        <span className="loading-dot" style={{ animationDelay: "0.15s" }} />
+        <span className="loading-dot" style={{ animationDelay: "0.3s" }} />
+      </div>
     );
-}
+  }
 
-export default BoardPage;
+  return (
+    <div className="board-root">
+      <nav className="board-nav">
+        <div className="nav-left">
+          <button className="back-btn" onClick={() => navigate("/")}>
+            ← Boards
+          </button>
+          <span className="nav-sep">|</span>
+          <h1 className="board-nav-title">{board?.title}</h1>
+        </div>
+        <div className="nav-right">
+          <div className="members-chips">
+            {board?.members?.slice(0, 4).map((m) => (
+              <div key={m._id} className="member-chip" title={m.email}>
+                {m.name?.charAt(0).toUpperCase()}
+              </div>
+            ))}
+            {board?.members?.length > 4 && (
+              <div className="member-chip member-chip-more">
+                +{board.members.length - 4}
+              </div>
+            )}
+          </div>
+          <button className="btn-member" onClick={() => setShowMemberForm(!showMemberForm)}>
+            + Member
+          </button>
+          <button className="nav-logout" onClick={logout}>
+            Sign Out
+          </button>
+        </div>
+      </nav>
+
+      {showMemberForm && (
+        <div className="member-bar">
+          <form className="member-form" onSubmit={addMember}>
+            <input
+              autoFocus
+              className="member-input"
+              type="email"
+              placeholder="member@email.com"
+              value={memberEmail}
+              onChange={(e) => setMemberEmail(e.target.value)}
+            />
+            {memberError && <span className="form-error">{memberError}</span>}
+            <button className="btn-add-member" type="submit">
+              Add →
+            </button>
+            <button type="button" className="btn-cancel-sm" onClick={() => setShowMemberForm(false)}>
+              Cancel
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="board-canvas">
+        {columns.map((col) => (
+          <KanbanColumn
+            key={col._id}
+            column={col}
+            tasks={taskMap[col._id] || []}
+            members={board?.members || []}
+            onTasksChange={handleTasksChange}
+            onDeleteColumn={deleteColumn}
+            onTaskMove={handleTaskMove}
+          />
+        ))}
+
+        <div className="add-col-area">
+          {showColForm ? (
+            <form className="add-col-form" onSubmit={addColumn}>
+              <input
+                autoFocus
+                className="col-name-input"
+                placeholder="Column name…"
+                value={newColName}
+                onChange={(e) => setNewColName(e.target.value)}
+              />
+              <div className="col-form-actions">
+                <button type="submit" className="btn-col-create">Create</button>
+                <button type="button" className="btn-cancel-sm" onClick={() => setShowColForm(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn-add-col" onClick={() => setShowColForm(true)}>
+              <span>+</span> Add Column
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -42,27 +42,34 @@ export const createCol = async(req, res) => {
     }
 };
 
-// 2. get all columns by board
-export const getAllCols = async(req, res) => {
+export const getAllCols = async (req, res) => {
     try {
         const { boardId } = req.params;
-        const board = await Board.findById(boardId);
-        if(!board) {
-            return res.status(404).json({ message: "Board not found"});
+
+        if (!req.user) {
+            return res.status(401).json({ message: "User not authenticated" });
         }
+
+        const board = await Board.findById(boardId);
+
+        if (!board) {
+            return res.status(404).json({ message: "Board not found" });
+        }
+
         const isMember = board.members.some(
             (member) => member.toString() === req.user._id.toString()
         );
-        if(!isMember) {
-            return res.status(403).json({ message: "Not Authorized"});
+
+        if (!isMember) {
+            return res.status(403).json({ message: "Not Authorized" });
         }
-        // fetch columns in sorted order
-        const columns = await Column.find({ board: boardId}).sort({ order: -1});
+
+        const columns = await Column.find({ board: boardId }).sort({ order: -1 });
 
         res.status(200).json(columns);
-    }
-    catch(error) {
-        res.status(500).json({ message: error.message});
+    } catch (error) {
+        console.error("GET COL ERROR:", error);
+        res.status(500).json({ message: error.message });
     }
 };
 

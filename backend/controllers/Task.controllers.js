@@ -114,13 +114,14 @@ export const getTasksByCols = async(req, res) => {
 
 export const moveTask = async(req, res) => {
     try {
-        const { taskId, destColId, newIndex } = req.params;
+        const { taskId } = req.params;              
+        const { destColId, newIndex } = req.body;   
         const task = await Task.findById(taskId);
 
         if(!task) {
             return res.status(404).json({ message: "Task not found"});
         }
-        const board = await Task.findById(task.board);
+        const board = await Board.findById(task.board);
         if(!board) {
             return res.status(404).json( { message: "Board not found"});
         }
