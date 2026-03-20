@@ -37,7 +37,7 @@ export default function AuthPage() {
       <div className="auth-left">
         <div className="auth-brand">
           <span className="brand-mark">◆</span>
-          <h1 className="brand-name">TASKR</h1>
+          <h1 className="brand-name">KanFlow</h1>
         </div>
         <p className="auth-tagline">Organize. Execute. Ship.</p>
         <div className="auth-lines">

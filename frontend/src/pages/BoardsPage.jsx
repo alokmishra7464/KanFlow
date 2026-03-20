@@ -49,7 +49,7 @@ export default function BoardsPage() {
       <nav className="boards-nav">
         <div className="nav-brand">
           <span className="brand-mark-sm">◆</span>
-          <span className="nav-brand-name">TASKR</span>
+          <span className="nav-brand-name">KanFlow</span>
         </div>
         <button className="nav-logout" onClick={logout}>
           Sign Out
