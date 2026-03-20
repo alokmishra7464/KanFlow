@@ -1,3 +1,4 @@
+import socket from "../socket";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -45,6 +46,60 @@ export default function BoardPage() {
     load();
   }, [id]);
 
+  useEffect(() => {
+  if (!id) return;
+
+  // Connect and join board room
+  socket.connect();
+  socket.emit("join-board", id);
+
+  // Listen for real-time events
+  socket.on("task-created", ({ columnId, task }) => {
+    setTaskMap((prev) => ({
+      ...prev,
+      [columnId]: [...(prev[columnId] || []), task],
+    }));
+  });
+
+  socket.on("task-deleted", ({ taskId, columnId }) => {
+    setTaskMap((prev) => ({
+      ...prev,
+      [columnId]: (prev[columnId] || []).filter((t) => t._id !== taskId),
+    }));
+  });
+
+  socket.on("task-moved", ({ taskId, srcColId, destColId, newIndex }) => {
+    setTaskMap((prev) => {
+      const srcTasks = [...(prev[srcColId] || [])];
+      const destTasks = srcColId === destColId
+        ? srcTasks
+        : [...(prev[destColId] || [])];
+
+      const movedTask = srcTasks.find((t) => t._id === taskId);
+      if (!movedTask) return prev;
+
+      const newSrc = srcTasks.filter((t) => t._id !== taskId);
+      const newDest = srcColId === destColId ? newSrc : destTasks;
+      newDest.splice(newIndex, 0, { ...movedTask, column: destColId });
+
+      return {
+        ...prev,
+        [srcColId]: newSrc,
+        [destColId]: newDest,
+      };
+    });
+  });
+
+  // Cleanup on unmount
+  return () => {
+    socket.emit("leave-board", id);
+    socket.off("task-created");
+    socket.off("task-deleted");
+    socket.off("task-moved");
+    socket.disconnect();
+  };
+}, [id]);
+
   const addColumn = async (e) => {
     e.preventDefault();
     if (!newColName.trim()) return;
@@ -79,29 +134,11 @@ export default function BoardPage() {
   const handleTaskMove = async (taskId, srcColId, destColId, newIndex) => {
     try {
       await api.moveTask(taskId, destColId, newIndex);
-      // Optimistically update UI
-      const srcTasks = [...(taskMap[srcColId] || [])];
-      const destTasks = [...(taskMap[destColId] || [])];
-      const movedTask = srcTasks.find((t) => t._id === taskId);
-      if (!movedTask) return;
 
-      const newSrc = srcTasks.filter((t) => t._id !== taskId);
-      const newDest = srcColId === destColId ? newSrc : destTasks;
-      newDest.splice(newIndex, 0, { ...movedTask, column: destColId });
-
-      if (srcColId === destColId) {
-        setTaskMap((prev) => ({ ...prev, [srcColId]: newDest }));
-      } else {
-        setTaskMap((prev) => ({
-          ...prev,
-          [srcColId]: newSrc,
-          [destColId]: newDest,
-        }));
-      }
     } catch (err) {
       alert(err.message);
     }
-  };
+    };
 
   const addMember = async (e) => {
     e.preventDefault();

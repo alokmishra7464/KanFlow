@@ -1,3 +1,4 @@
+import { getIO } from "../socket.js";
 import { Task } from "../models/Task.models.js";
 import { Board } from "../models/Board.models.js";
 import { Column } from "../models/Column.models.js";
@@ -47,7 +48,14 @@ export const createTask = async(req, res) => {
             assignedTo,
             order: taskCount,
         });
+
+        await task.populate("assignedTo", "name email");
+        getIO().to(board._id.toString()).emit("task-created", {
+            columnId,
+            task   // ← task itself is populated
+        });
         res.status(201).json(task);
+
     }
     catch(error) {
         res.status(500).json({ message: error.message});
@@ -71,12 +79,17 @@ export const deleteTask = async(req, res) => {
             (member) => req.user._id.toString() === member.toString()
         );
         if(!isMember) {
-            return res.stauts(403).json({ message: "Not Authorized to delete task"});
+            return res.status(403).json({ message: "Not Authorized to delete task"});
         }
 
         await task.deleteOne();
 
-        res.status(200).json({ message: "Task Deleted!!!"});
+        getIO().to(task.board.toString()).emit("task-deleted", {
+            taskId,
+            columnId: task.column.toString()
+        });
+        res.status(200).json({ message: "Task Deleted!!!" });
+
 
     }
     catch(error) {
@@ -103,7 +116,7 @@ export const getTasksByCols = async(req, res) => {
             return res.status(403).json({ message: "Not authorized"})
         }
 
-        const tasks = await Task.find({ column: columnId}).sort({ order: 1});
+        const tasks = await Task.find({ column: columnId}).sort({ order: 1}).populate("assignedTo", "name email");
 
         res.status(200).json(tasks);
     }
@@ -185,7 +198,13 @@ export const moveTask = async(req, res) => {
             await task.save(); // save it 
         }
 
-        return res.json( {message: "Task moved successfully"});
+        getIO().to(task.board.toString()).emit("task-moved", {
+        taskId,
+        srcColId: srcColId.toString(),
+        destColId,
+        newIndex
+        });
+        return res.json({ message: "Task moved successfully" });
 
     }
     catch(error) {

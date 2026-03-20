@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import cors from "cors"
 dotenv.config();
+import { createServer } from "http";
+import { initSocket } from "./socket.js";
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/Auth.routes.js";
@@ -9,6 +11,8 @@ import columnRoutes from "./routes/Column.routes.js";
 import taskRoutes from "./routes/Task.routes.js";
 
 const app = express();
+const httpServer = createServer(app); // ← wrap express in http server
+initSocket(httpServer);
 
 app.use(cors({
   origin: "http://localhost:5173",
@@ -36,6 +40,6 @@ app.use("/api/tasks", taskRoutes);
 
 const PORT = process.env.PORT;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`Server is running on ${PORT}.`);
 });

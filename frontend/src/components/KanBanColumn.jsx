@@ -20,7 +20,7 @@ export default function KanbanColumn({ column, tasks, members, onTasksChange, on
         form.description.trim(),
         form.assignedTo || undefined
       );
-      onTasksChange(column._id, [...tasks, task]);
+      
       setForm({ title: "", description: "", assignedTo: "" });
       setShowForm(false);
     } catch (err) {
@@ -34,7 +34,7 @@ export default function KanbanColumn({ column, tasks, members, onTasksChange, on
     if (!confirm("Delete this task?")) return;
     try {
       await api.deleteTask(taskId);
-      onTasksChange(column._id, tasks.filter((t) => t._id !== taskId));
+      
     } catch (err) {
       alert(err.message);
     }
